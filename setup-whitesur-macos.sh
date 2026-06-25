@@ -222,6 +222,47 @@ else
 fi
 
 # ------------------------------------------------------------------------------
+say "Timeshift: permanent post-setup baseline + weekly rolling snapshot"
+# Strategy (low footprint): one permanent on-demand baseline of the fully
+# configured system (~5 GB), plus a single weekly snapshot that overwrites
+# itself. On-demand snapshots are never auto-rotated, so the baseline persists;
+# weekly keeps count=1. ext4 -> rsync mode; /home user data excluded by default.
+sudo apt-get install -y timeshift
+ROOT_UUID="$(findmnt -no UUID /)"
+sudo mkdir -p /etc/timeshift
+sudo tee /etc/timeshift/timeshift.json >/dev/null <<EOF
+{
+  "backup_device_uuid" : "${ROOT_UUID}",
+  "parent_device_uuid" : "",
+  "do_first_run" : "false",
+  "btrfs_mode" : "false",
+  "include_btrfs_home_for_backup" : "false",
+  "include_btrfs_home_for_restore" : "false",
+  "stop_cron_emails" : "true",
+  "schedule_monthly" : "false",
+  "schedule_weekly" : "true",
+  "schedule_daily" : "false",
+  "schedule_hourly" : "false",
+  "schedule_boot" : "false",
+  "count_monthly" : "0",
+  "count_weekly" : "1",
+  "count_daily" : "0",
+  "count_hourly" : "0",
+  "count_boot" : "0",
+  "snapshot_size" : "0",
+  "snapshot_count" : "0",
+  "exclude" : [],
+  "exclude-apps" : []
+}
+EOF
+# Create the permanent baseline once (skip if it already exists, so re-runs are safe).
+if ! sudo timeshift --list 2>/dev/null | grep -q "Post-setup baseline"; then
+  sudo timeshift --create --comments "Post-setup baseline (keep - do not delete)" --scripted
+else
+  echo "  baseline snapshot already present — skipping"
+fi
+
+# ------------------------------------------------------------------------------
 cat <<'DONE'
 
 ============================================================

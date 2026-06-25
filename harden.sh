@@ -67,6 +67,26 @@ EOF
 fi
 
 # ------------------------------------------------------------------------------
+say "Auto security updates + laptop power management"
+# Apply security patches automatically.
+sudo apt-get install -y unattended-upgrades
+sudo tee /etc/apt/apt.conf.d/20auto-upgrades >/dev/null <<'EOF'
+APT::Periodic::Update-Package-Lists "1";
+APT::Periodic::Unattended-Upgrade "1";
+APT::Periodic::AutocleanInterval "7";
+EOF
+sudo systemctl enable unattended-upgrades 2>/dev/null || true
+
+# TLP for battery life — only on laptops (skip on desktops / no battery).
+if ls /sys/class/power_supply/ 2>/dev/null | grep -qi bat; then
+  sudo apt-get install -y tlp
+  sudo systemctl enable --now tlp 2>/dev/null || true
+  echo "  TLP installed and enabled (laptop detected)"
+else
+  echo "  no battery detected — skipping TLP"
+fi
+
+# ------------------------------------------------------------------------------
 say "Hardening summary"
 sudo ufw status verbose | head -3
 echo "Listening sockets remaining:"
