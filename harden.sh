@@ -50,6 +50,22 @@ done
 # chain; masking guarantees nothing can socket-activate it back on.
 sudo systemctl mask cups-browsed.service 2>/dev/null || true
 
+# Bluetooth is disabled above, so suppress the blueman tray applet's autostart
+# (a user-level override of the system /etc/xdg/autostart entry; ~60 MB saved).
+# Delete ~/.config/autostart/blueman.desktop if you re-enable Bluetooth.
+if [ -f /etc/xdg/autostart/blueman.desktop ]; then
+  mkdir -p "${HOME}/.config/autostart"
+  cat > "${HOME}/.config/autostart/blueman.desktop" <<'EOF'
+[Desktop Entry]
+Type=Application
+Name=blueman-applet
+Exec=blueman-applet
+X-GNOME-Autostart-enabled=false
+Hidden=true
+EOF
+  pkill -x blueman-applet 2>/dev/null || true
+fi
+
 # ------------------------------------------------------------------------------
 say "Hardening summary"
 sudo ufw status verbose | head -3
