@@ -71,7 +71,12 @@ mkdir -p "${WALLPAPER_DIR}"
 # Populate the folder with 100 4K (>=3840x2160) landscape wallpapers.
 # fetch_4k_landscapes.py ships next to this script; it pulls from dharmx/walls,
 # keeps only true-4K images, and writes landscape-NNN.jpg into the folder.
-if [ -f "${SCRIPT_DIR}/fetch_4k_landscapes.py" ]; then
+# Skip the (slow) download when the folder already holds enough wallpapers.
+# Override with SKIP_WALLPAPERS=0 to force a re-fetch.
+existing_wp="$(find "${WALLPAPER_DIR}" -maxdepth 1 -type f \( -iname '*.jpg' -o -iname '*.png' \) 2>/dev/null | wc -l)"
+if [ "${SKIP_WALLPAPERS:-1}" = "1" ] && [ "${existing_wp}" -ge 100 ]; then
+  say "  ${existing_wp} wallpapers already present — skipping download (SKIP_WALLPAPERS=0 to force)"
+elif [ -f "${SCRIPT_DIR}/fetch_4k_landscapes.py" ]; then
   python3 "${SCRIPT_DIR}/fetch_4k_landscapes.py" 100 || warn "wallpaper fetch failed"
 else
   warn "fetch_4k_landscapes.py not found next to this script — no wallpapers downloaded."
@@ -79,13 +84,13 @@ fi
 
 # ------------------------------------------------------------------------------
 say "6/10 Applying theme, icons, cursor and wallpaper (xfconf)"
-xfconf-query -c xsettings -p /Net/ThemeName       -s "WhiteSur-Dark"
-xfconf-query -c xfwm4     -p /general/theme        -s "WhiteSur-Dark"
-xfconf-query -c xsettings -p /Net/IconThemeName    -s "WhiteSur-dark"
-xfconf-query -c xsettings -p /Gtk/CursorThemeName  -s "WhiteSur-cursors"
+xfconf-query --create -t string -c xsettings -p /Net/ThemeName       -s "WhiteSur-Dark"
+xfconf-query --create -t string -c xfwm4     -p /general/theme        -s "WhiteSur-Dark"
+xfconf-query --create -t string -c xsettings -p /Net/IconThemeName    -s "WhiteSur-dark"
+xfconf-query --create -t string -c xsettings -p /Gtk/CursorThemeName  -s "WhiteSur-cursors"
 # Slightly transparent window titlebars (needs the compositor enabled).
-xfconf-query -c xfwm4 -p /general/use_compositing -s true
-xfconf-query -c xfwm4 -p /general/frame_opacity   -s 90
+xfconf-query --create -t bool -c xfwm4 -p /general/use_compositing -s true
+xfconf-query --create -t int  -c xfwm4 -p /general/frame_opacity   -s 90
 # Wallpapers were downloaded to ${WALLPAPER_DIR} in step 5.
 # Configure rotation/selection yourself in Settings → Desktop (Background tab).
 
